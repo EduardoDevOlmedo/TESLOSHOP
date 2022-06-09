@@ -5,22 +5,36 @@ import { Box } from "@mui/system"
 import React, { useState } from "react"
 
 interface Props {
-
+    currentValue: number;
+    onUpdateQuantity: (newValue: number) => void;
+    maxValue: number
 }
 
-export const ItemCounter:React.FC<Props> = () => {
+export const ItemCounter:React.FC<Props> = ({currentValue, onUpdateQuantity, maxValue}) => {
   
-  const [value, setValue] = useState(1)
-
-    return (
-    <Box display="flex" alignItems="center">
-        <IconButton>
-            <RemoveCircleOutline onClick={() => setValue(value - 1)}/>
-        </IconButton> 
-        <Typography sx={{width: 40, textAlign: "center"}}> {value} </Typography>
-        <IconButton>
-            <AddCircleOutline  onClick={() => setValue(value + 1)}/>
-        </IconButton>
-    </Box>
-  )
+   
+    const addOrRemove = ( value: number ) => {
+        if ( value === -1 ) {
+          if ( currentValue === 1 ) return;
+    
+          return onUpdateQuantity( currentValue - 1);
+        }
+    
+        if ( currentValue >= maxValue ) return;
+    
+        onUpdateQuantity( currentValue + 1 );
+      }
+      
+    
+      return (
+        <Box display='flex' alignItems='center'>
+            <IconButton onClick={ () => addOrRemove(-1) }>
+                <RemoveCircleOutline />
+            </IconButton>
+            <Typography sx={{ width: 40, textAlign:'center' }}> {currentValue} </Typography>
+            <IconButton onClick={ () => addOrRemove(+1) }>
+                <AddCircleOutline />
+            </IconButton>
+        </Box>
+      )
 }

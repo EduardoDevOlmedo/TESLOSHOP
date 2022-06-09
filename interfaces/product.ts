@@ -10,6 +10,8 @@ export interface IProduct {
     type: IType;
     gender: 'men'|'women'|'kid'|'unisex';
     _id: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 
