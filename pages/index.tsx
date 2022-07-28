@@ -1,5 +1,6 @@
 import { Typography, Grid, Card, CardActionArea, CardMedia } from '@mui/material'
 import type { NextPage } from 'next'
+import { useSession } from 'next-auth/react'
 import { ShopLayout } from '../components/layouts'
 import { ProductsList } from '../components/products'
 import FullScreenLoading from '../components/ui/FullScreenLoading'
@@ -10,6 +11,8 @@ import { useProducts } from '../HOOKS'
 
 const Home: NextPage = () => {
 
+  const session = useSession()
+  console.log({session})
   const {products, isLoading} = useProducts("/products")
 
   return (

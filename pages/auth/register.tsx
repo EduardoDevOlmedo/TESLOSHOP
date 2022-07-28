@@ -1,13 +1,16 @@
 
 import { Button, Grid, Link, TextField, Typography, Chip } from '@mui/material'
 import { Box } from '@mui/system'
-import React, { useState } from 'react'
+import React, { useContext, useState } from 'react'
 import { AuthLayout } from '../../components/layouts'
 import NextLink from "next/link"
 import { useForm } from 'react-hook-form'
 import { teslOApi } from '../../API'
 import { validations } from '../../utils'
 import { ErrorOutline } from '@mui/icons-material'
+import { AuthContext } from '../../context'
+import { useRouter } from 'next/router'
+import { getSession, signIn } from 'next-auth/react'
 
 
 type FormData = {
@@ -18,24 +21,30 @@ type FormData = {
 
 const Register = () => {
   
-    const { handleSubmit, register, formState: { errors } } = useForm<FormData>();
-    
-    const [showError, setShowError] = useState(false)
+    const router = useRouter()
+    const {registerUser} = useContext(AuthContext)
 
+    const { handleSubmit, register, formState: { errors } } = useForm<FormData>();
+
+    const [showError, setShowError] = useState(false)
+    const [errorMessage, setErrorMessage] = useState('')
 
     const onRegisterUser = async({email, password, name}: FormData) => {
         setShowError(false)
         
-        try {
-            const {data} = await teslOApi.post("/user/register", {email, password, name})
-            const {token, user} = data
-            console.log(data)
-        } catch (error) {
+        const {hasError, message} = await registerUser(name, email, password)
+
+        if(hasError){
             setShowError(true)
+            setErrorMessage(message!)
             setTimeout(() => {
                 setShowError(false)                
             }, 3000);
+
+            return;
         }
+
+        await signIn('credentials', {email, password})
     }
 
   
@@ -106,7 +115,7 @@ const Register = () => {
                         </Button>     
                     </Grid>
                     <Grid item xs={12} display="flex" justifyContent="end">
-                        <NextLink href="/auth/login" passHref>
+                    <NextLink href={router.query.p ? `/auth/login?p=${router.query.p}` : '/auth/login'} passHref>
                             <Link underline="always">
                                 Already have an account? Login.
                             </Link>
@@ -118,5 +127,29 @@ const Register = () => {
     </AuthLayout>
   )
 }
+
+import { GetServerSideProps } from 'next'
+
+export const getServerSideProps: GetServerSideProps = async ({req, query}) => {
+    const session = await getSession({req})  // your fetch function here 
+
+    const { p = '/'} = query
+
+    if(session){
+        return {
+            redirect: {
+                destination: p.toString(), 
+                permanent: false
+            }
+        }
+    }
+
+    return {
+        props: {
+            
+        }
+    }
+}
+
 
 export default Register

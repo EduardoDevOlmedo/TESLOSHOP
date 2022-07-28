@@ -1,12 +1,15 @@
-import { Button, Chip, Grid, Link, TextField, Typography} from '@mui/material'
+import { Button, Chip, Divider, Grid, Link, TextField, Typography} from '@mui/material'
 import { Box } from '@mui/system'
-import React, { useState } from 'react'
+import React, { useContext, useEffect, useState } from 'react'
 import { AuthLayout } from '../../components/layouts'
 import NextLink from "next/link"
 import { useForm } from 'react-hook-form'
 import { validations } from '../../utils'
 import { teslOApi } from '../../API'
 import { ErrorOutline } from '@mui/icons-material'
+import {AuthContext} from "../../context/auth"
+import { useRouter } from 'next/router'
+import { getProviders, getSession, signIn } from 'next-auth/react'
 
 type FormData = {
     email: string;
@@ -15,25 +18,54 @@ type FormData = {
 
 const Login = () => {
   
- const { handleSubmit, register, formState: { errors } } = useForm<FormData>();
+    const router = useRouter()
+  
+    const {
+      handleSubmit,
+      register,
+      formState: {
+          errors
+      }
+  } = useForm < FormData > ();
+  const {
+      loginUser
+  } = useContext(AuthContext)
 
- const [showError, setShowError] = useState(false)
+  const [showError, setShowError] = useState(false)
 
-    const onLoginUser = async({email, password}: FormData) => {
-      
-        setShowError(false)
+  const [providers, setProviders] = useState<any>({})
 
-        try {
-            const {data} = await teslOApi.post("/user/login", {email, password})
-            const {token, user} = data
-            console.log(data)
-        } catch (error) {
-            setShowError(true)
-            setTimeout(() => {
-                setShowError(false)                
-            }, 3000);
-        }
-    }
+  useEffect(() => {
+    getProviders().then(prov => {
+        setProviders(prov)
+    })
+  }, [])
+
+
+  const onLoginUser = async ({
+      email,
+      password
+  }: FormData) => {
+
+  setShowError(false)
+  
+  await signIn('credentials', { email, password })
+
+
+//   const isValidLogin = await loginUser(email, password);
+
+//       if (!isValidLogin) {
+//           setShowError(true)
+//           setTimeout(() => {
+//               setShowError(false)
+//           }, 3000);
+//         return;
+//     }
+
+//     const destination = router.query.p?.toString() || " "
+
+//     router.replace(destination)
+}
 
 return(
   <AuthLayout title="Log In">
@@ -87,17 +119,70 @@ return(
                         </Button>     
                     </Grid>
                     <Grid item xs={12} display="flex" justifyContent="end">
-                        <NextLink href="/auth/register" passHref>
+                        <NextLink href={router.query.p ? `/auth/register?p=${router.query.p}` : '/auth/register'} passHref>
                             <Link underline="always">
                                 Don&apos;t have an account? Register.
                             </Link>
                         </NextLink>
+                    </Grid>
+                    <Grid
+                        display="flex" flexDirection="column"
+                    >
+                        <Divider 
+                        sx={{
+                            width: '100%', mb: 2}}
+                        />
+                        {
+                            Object.values(providers).map((provider: any) => {
+
+                                if(provider.id === 'credentials') return (
+                                    <div key="credentials"></div>
+                                )
+
+                                return (
+                                    <Button
+                                        key={provider.id}
+                                        variant="outlined"
+                                        fullWidth
+                                        color="primary" sx={{mb: 1}}
+                                        onClick={() => signIn(provider.id)}
+                                    >
+                                        {provider.name}
+                                    </Button>
+                                )
+
+                            })
+                        }
                     </Grid>
                 </Grid>
             </Box>
         </form>
     </AuthLayout>
   )
+}
+
+
+import { GetServerSideProps } from 'next'
+
+export const getServerSideProps: GetServerSideProps = async ({req, query}) => {
+    const session = await getSession({req})  // your fetch function here 
+
+    const { p = '/'} = query
+
+    if(session){
+        return {
+            redirect: {
+                destination: p.toString(), 
+                permanent: false
+            }
+        }
+    }
+
+    return {
+        props: {
+            
+        }
+    }
 }
 
 export default Login
