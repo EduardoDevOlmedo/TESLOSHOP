@@ -1,4 +1,4 @@
-import { Box, Chip, Button, Card, CardContent, Divider, Grid, Typography, Link } from '@mui/material';
+import { Box, Chip, Button, Card, CardContent, Divider, Grid, Typography, Link, CircularProgress } from '@mui/material';
 import { CartList } from '../../components/cart';
 import { OrderSummary } from '../../components/cart/OrderSummary';
 import NextLink from "next/link"
@@ -11,14 +11,52 @@ interface Props {
     order: IOrder
 }
 
+export type OrderResponseBody = {
+
+    id: string;
+
+    status:
+        | "COMPLETED"
+        | "SAVED"
+        | "APPROVED"
+        | "VOIDED"
+        | "COMPLETED"
+        | "PAYER_ACTION_REQUIRED";
+};
+
+
 const OrderPage:NextPage<Props> = ({order}) => {
   
-
+    const router = useRouter()
     const {shippingAddress: {firstName, lastName, address, address2, phone, country, zip, city}, numberOfItems, subTotal, tax, total} = order
+    const [isPaying, setIsPaying] = useState(false)
 
     const elementsForOrderList = {
         numberOfItems, subTotal, tax, total
     } 
+
+    const onOrderCompleted = async(details: OrderResponseBody) => {
+       
+       
+        if(details.status !== 'COMPLETED'){
+            return alert("No hay pago en PayPal");
+        }
+
+        setIsPaying(true)
+
+        try {
+            const {data} = await teslOApi.post('/orders/paid', {
+                transactionid: details.id,
+                orderId: order._id
+            })
+
+            router.reload();
+        } catch (error) {
+            setIsPaying(false)
+            console.error(error)
+        }
+
+    }
 
     return (
     <ShopLayout title='Order  summary' pageDescription={'User order summary'}>
@@ -79,6 +117,15 @@ const OrderPage:NextPage<Props> = ({order}) => {
                         </Box>
                         <OrderSummary elements={elementsForOrderList} />
                         <Box sx={{ mt: 3 }} display="flex" flexDirection="column">
+                            <Box display="flex" 
+                                justifyContent="center"
+                                 className="fadeIn"
+                                 sx={{display: !isPaying ? 'none' : 'flex'}}
+                                 >
+                                <CircularProgress />
+                            </Box>      
+
+                            <Box sx={{display: isPaying ? 'none' : 'flex', flex: 1, flexDirection: 'column'}}>
                             {
                                 order.isPaid ? 
                                 (
@@ -94,6 +141,7 @@ const OrderPage:NextPage<Props> = ({order}) => {
                                 createOrder={(data, actions) => {
                                     
                                     return actions.order.create({
+                                        
                                         purchase_units: [
                                             {
                                                 amount: {
@@ -105,14 +153,13 @@ const OrderPage:NextPage<Props> = ({order}) => {
                                 }}
                                 onApprove={(data, actions) => {
                                     return actions!.order!.capture().then((details) => {
-                                        console.log({details})
-                                        const name = details!.payer!.name!.given_name;
-                                        
-                                        // alert(`Transaction completed by ${name}`);
+                                        onOrderCompleted(details);
                                     });
                                 }}
                                 />
                             }
+                            </Box>
+
                         </Box>
                     </CardContent>
                 </Card>
@@ -129,12 +176,16 @@ export default OrderPage;
 import { getSession } from 'next-auth/react';
 import { dbOrders } from '../../database';
 import { IOrder } from '../../interfaces';
+import { teslOApi } from '../../API';
+import { useRouter } from 'next/router';
+import { useState } from 'react';
 
 export const getServerSideProps: GetServerSideProps = async ({ req, query }) => {
     
     const { id = '' } = query;
     const session:any = await getSession({ req });
 
+    
     if ( !session ) {
         return {
             redirect: {
@@ -144,7 +195,7 @@ export const getServerSideProps: GetServerSideProps = async ({ req, query }) => 
         }
     }
 
-
+    
     const order = await dbOrders.getOrderById(id.toString())
    
     if(!order){

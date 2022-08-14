@@ -1,6 +1,6 @@
 import { ItemCounter } from "../../components/ui";
-import { ICartProduct } from "../../interfaces";
-import { CartState, shippingAddress } from "./CartProvider";
+import { ICartProduct, shippingAddress } from "../../interfaces";
+import { CartState } from "./CartProvider";
 
 type cartType = 
 |{ type: "[Cart] - LoadCart from cookies | storage", payload: ICartProduct[]} 
